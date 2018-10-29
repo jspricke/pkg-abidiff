@@ -16,7 +16,6 @@
 #  Python 2
 #  ABI Compliance Checker (1.99.25 or newer)
 #  ABI Dumper (0.99.19 or newer)
-#  Universal Ctags
 #  GNU Binutils
 #  Elfutils
 #  G++
@@ -51,7 +50,6 @@ TOOL_VERSION = "0.97"
 
 ABI_CC = "abi-compliance-checker"
 ABI_DUMPER = "abi-dumper"
-CTAGS = "ctags"
 
 ABI_CC_VER = "1.99.25"
 ABI_DUMPER_VER = "0.99.19"
@@ -458,7 +456,7 @@ def scenario():
     if not ARGS.new:
         exit_status("Error", "new packages are not specified (-new option)")
     
-    global ABI_CC, ABI_DUMPER, CTAGS
+    global ABI_CC, ABI_DUMPER
     
     if not check_cmd(ABI_CC):
         exit_status("Error", "ABI Compliance Checker "+ABI_CC_VER+" or newer is not installed")
@@ -607,14 +605,6 @@ def scenario():
         exit_status("Error", "old devel package is not specified")
     else:
         print "WARNING: devel packages are not specified, can't filter public ABI"
-    
-    if PUBLIC_ABI:
-        if not check_cmd(CTAGS):
-            exit_status("Error", "Universal Ctags program is not installed")
-        
-        ctags_ver = get_version(CTAGS)
-        if ctags_ver.lower().find("universal")==-1:
-            exit_status("Error", "requires Universal Ctags")
     
     print "Extracting packages ..."
     global FILES

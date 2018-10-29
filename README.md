@@ -41,7 +41,6 @@ Install
 * Python 2
 * ABI Compliance Checker 1.99.25 or newer (https://github.com/lvc/abi-compliance-checker)
 * ABI Dumper 0.99.19 or newer             (https://github.com/lvc/abi-dumper)
-* Universal Ctags                         (https://github.com/universal-ctags/ctags)
 * GNU Binutils
 * Elfutils
 * G++
