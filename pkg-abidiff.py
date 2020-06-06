@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 #####################################################################
 # Package ABI Diff 0.97
 # Verify API/ABI compatibility of Linux packages (RPM or DEB)
@@ -139,28 +139,27 @@ def s_exit(code):
     sys.exit(ERROR_CODE[code])
 
 def int_exit(signal, frame):
-    print "\nGot INT signal"
-    print "Exiting"
+    print("\nGot INT signal")
+    print("Exiting")
     s_exit("Error")
 
 def exit_status(code, msg):
     if code!="Ok":
         print_err("ERROR: "+msg)
     else:
-        print msg
+        print(msg)
     
     s_exit(code)
 
 def extract_pkgs(age, kind):
     global PKGS, TMP_DIR_INT
-    pkgs = PKGS[age][kind].keys()
     
     extr_dir = TMP_DIR_INT+"/ext/"+age+"/"+kind
     
     if not os.path.exists(extr_dir):
         os.makedirs(extr_dir)
     
-    for pkg in pkgs:
+    for pkg in PKGS[age][kind]:
         m = re.match(r".*\.(\w+)\Z", os.path.basename(pkg))
         fmt = None
         
@@ -196,7 +195,7 @@ def get_rel_path(path):
 def is_object(path):
     name = os.path.basename(path)
     if re.search(r"lib.*\.so(\..+|\Z)", name):
-        if read_bytes(path)=="7f454c46":
+        if read_bytes(path) == b"7f454c46":
             return True
     return False
 
@@ -222,11 +221,11 @@ def get_attrs(path):
     arch = None
     
     if fmt=="rpm":
-        r = subprocess.check_output(["rpm", "-qp", "--queryformat", "%{name},%{version},%{release},%{arch}", path])
+        r = subprocess.check_output(["rpm", "-qp", "--queryformat", "%{name},%{version},%{release},%{arch}", path]).decode('utf-8')
         name, ver, rl, arch = r.split(",")
         ver = ver+"-"+rl
     elif fmt=="deb":
-        r = subprocess.check_output(["dpkg", "-f", path])
+        r = subprocess.check_output(["dpkg", "-f", path]).decode('utf-8')
         attr = {"Package":None, "Version":None, "Architecture":None}
         for line in r.split("\n"):
             m = re.match(r"(\w+)\s*:\s*(.+)", line)
@@ -238,7 +237,7 @@ def get_attrs(path):
         arch = attr["Architecture"]
     elif fmt=="apk":
         with open(TMP_DIR_INT+"/err", "a") as err_log:
-            r = subprocess.check_output(["tar", "-xf", path, ".PKGINFO", "-O"], stderr=err_log)
+            r = subprocess.check_output(["tar", "-xf", path, ".PKGINFO", "-O"], stderr=err_log).decode('utf-8')
         
         attr = {}
         
@@ -268,7 +267,7 @@ def get_attrs(path):
     return None
 
 def get_soname(path):
-    r = subprocess.check_output(["objdump", "-p", path])
+    r = subprocess.check_output(["objdump", "-p", path]).decode('utf-8')
     m = re.search(r"SONAME\s+([^ ]+)", r)
     if m:
         return m.group(1).rstrip()
@@ -370,11 +369,11 @@ def format_num(num):
     return num
 
 def get_dumpversion(prog):
-    ver = subprocess.check_output([prog, "-dumpversion"])
+    ver = subprocess.check_output([prog, "-dumpversion"]).decode('utf-8')
     return ver.rstrip()
 
 def get_version(prog):
-    ver = subprocess.check_output([prog, "--version"])
+    ver = subprocess.check_output([prog, "--version"]).decode('utf-8')
     return ver.rstrip()
 
 def cmp_vers(x, y):
@@ -420,8 +419,8 @@ def get_dump_attr(path):
 
 def count_symbols(path, obj, age):
     global ABI_CC
-    print "Counting symbols in the ABI dump for "+os.path.basename(obj)+" ("+age+")"
-    count = subprocess.check_output([ABI_CC, "-count-symbols", path])
+    print("Counting symbols in the ABI dump for "+os.path.basename(obj)+" ("+age+")")
+    count = subprocess.check_output([ABI_CC, "-count-symbols", path]).decode('utf-8')
     return int(count.rstrip())
 
 def read_bytes(path):
@@ -590,7 +589,7 @@ def scenario():
         PKGS_ATTR[age]["arch"] = parch["rel"]
     
     if PKGS_ATTR["old"]["name"]!=PKGS_ATTR["new"]["name"]:
-        print "WARNING: different names of old and new packages"
+        print("WARNING: different names of old and new packages")
     
     if PKGS_ATTR["old"]["arch"]!=PKGS_ATTR["new"]["arch"]:
         exit_status("Error", "different architectures of old and new packages")
@@ -599,14 +598,14 @@ def scenario():
     if "devel" in PKGS["old"]:
         if "devel" in PKGS["new"]:
             PUBLIC_ABI = True
-            if len(PKGS["old"]["devel"].keys())!=len(PKGS["new"]["devel"].keys()):
+            if len(PKGS["old"]["devel"])!=len(PKGS["new"]["devel"]):
                 exit_status("Error", "different number of old and new devel packages")
         else:
             exit_status("Error", "new devel package is not specified")
     elif "devel" in PKGS["new"]:
         exit_status("Error", "old devel package is not specified")
     else:
-        print "WARNING: devel packages are not specified, can't filter public ABI"
+        print("WARNING: devel packages are not specified, can't filter public ABI")
     
     if PUBLIC_ABI:
         if not check_cmd(CTAGS):
@@ -616,7 +615,7 @@ def scenario():
         if ctags_ver.lower().find("universal")==-1:
             exit_status("Error", "requires Universal Ctags")
     
-    print "Extracting packages ..."
+    print("Extracting packages ...")
     global FILES
     FILES["old"] = {}
     FILES["new"] = {}
@@ -646,7 +645,7 @@ def scenario():
                         if re.match(r".*\.debug\Z", f):
                             fkind = "debuginfo"
                         
-                        if get_fmt(PKGS[age]["debug"].keys()[0])=="deb":
+                        if get_fmt(list(PKGS[age]["debug"])[0])=="deb":
                             if is_object(fpath):
                                 fkind = "debuginfo"
                     elif kind=="devel":
@@ -669,14 +668,14 @@ def scenario():
     shortest_name = {}
     
     for age in ["old", "new"]:
-        print "Creating ABI dumps ("+age+") ..."
+        print("Creating ABI dumps ("+age+") ...")
         if "debuginfo" not in FILES[age]:
             exit_status("NoDebug", "debuginfo files are not found in "+age+" debuginfo package")
         
         if "object" not in FILES[age]:
             exit_status("NoABI", "shared objects are not found in "+age+" release package")
         
-        objects = FILES[age]["object"].keys()
+        objects = list(FILES[age]["object"])
         objects.sort(key=lambda x: x.lower())
         
         abi_dump[age] = {}
@@ -693,7 +692,7 @@ def scenario():
             dump_dir = ARGS.dumps_dir
         
         dump_dir += "/"+parch+"/"+pname+"/"+pver
-        print "Using dumps directory: "+dump_dir
+        print("Using dumps directory: "+dump_dir)
         
         for obj in objects:
             oname = os.path.basename(obj)
@@ -708,11 +707,11 @@ def scenario():
                 if ARGS.rebuild_dumps:
                     os.remove(obj_dump_path)
                 else:
-                    print "Using existing ABI dump for "+oname
+                    print("Using existing ABI dump for "+oname)
                     abi_dump[age][oname] = obj_dump_path
                     continue
             
-            print "Creating ABI dump for "+oname
+            print("Creating ABI dump for "+oname)
             
             cmd_d = [ABI_DUMPER, "-o", obj_dump_path, "-lver", pver]
             
@@ -745,7 +744,7 @@ def scenario():
             cmd_d.append(obj)
             
             if ARGS.debug:
-                print "Executing "+" ".join(cmd_d)
+                print("Executing "+" ".join(cmd_d))
             
             ecode = 0
             
@@ -761,15 +760,15 @@ def scenario():
             dump_attr = get_dump_attr(obj_dump_path)
             
             if dump_attr["empty"]:
-                print "WARNING: empty ABI dump for "+oname+" ("+age+")"
+                print("WARNING: empty ABI dump for "+oname+" ("+age+")")
                 os.remove(obj_dump_path)
             elif dump_attr["lang"] not in ["C", "C++"]:
-                print "WARNING: unsupported language "+dump_attr["lang"]+" of "+oname+" ("+age+")"
+                print("WARNING: unsupported language "+dump_attr["lang"]+" of "+oname+" ("+age+")")
                 os.remove(obj_dump_path)
             else:
                 abi_dump[age][oname] = obj_dump_path
         
-    print "Comparing ABIs ..."
+    print("Comparing ABIs ...")
     soname_r = {}
     short_name_r = {}
     shortest_name_r = {}
@@ -796,8 +795,8 @@ def scenario():
                 shortest_name_r[age][shname] = {}
             shortest_name_r[age][shname][obj] = 1
     
-    old_objects = abi_dump["old"].keys()
-    new_objects = abi_dump["new"].keys()
+    old_objects = list(abi_dump["old"])
+    new_objects = list(abi_dump["new"])
     
     if objects and not old_objects:
         exit_status("Empty", "all ABI dumps are empty or invalid")
@@ -835,7 +834,7 @@ def scenario():
         if obj in soname["old"]:
             sname = soname["old"][obj]
             if sname in soname_r["new"]:
-                bysoname = soname_r["new"][sname].keys()
+                bysoname = list(soname_r["new"][sname])
                 if bysoname and len(bysoname)==1:
                     new_obj = bysoname[0]
         
@@ -849,7 +848,7 @@ def scenario():
             if obj in short_name["old"]:
                 shname = short_name["old"][obj]
                 if shname in short_name_r["new"]:
-                    byshort = short_name_r["new"][shname].keys()
+                    byshort = list(short_name_r["new"][shname])
                     if byshort and len(byshort)==1:
                         new_obj = byshort[0]
         
@@ -858,7 +857,7 @@ def scenario():
             if obj in shortest_name["old"]:
                 shname = shortest_name["old"][obj]
                 if shname in shortest_name_r["new"]:
-                    byshort = shortest_name_r["new"][shname].keys()
+                    byshort = list(shortest_name_r["new"][shname])
                     if byshort and len(byshort)==1:
                         new_obj = byshort[0]
         
@@ -886,7 +885,7 @@ def scenario():
             removed.pop(obj, None)
             added.pop(new_obj, None)
     
-    mapped_objs = mapped.keys()
+    mapped_objs = list(mapped)
     mapped_objs.sort(key=lambda x: x.lower())
     for obj in mapped_objs:
         new_obj = mapped[obj]
@@ -897,7 +896,7 @@ def scenario():
         if new_obj not in abi_dump["new"]:
             continue
         
-        print "Comparing "+obj+" (old) and "+new_obj+" (new)"
+        print("Comparing "+obj+" (old) and "+new_obj+" (new)")
         
         obj_report_dir = report_dir+"/"+obj
         
@@ -923,7 +922,7 @@ def scenario():
         cmd_c.append(abi_dump["new"][new_obj])
         
         if ARGS.debug:
-            print "Executing "+" ".join(cmd_c)
+            print("Executing "+" ".join(cmd_c))
         
         with open(TMP_DIR_INT+"/log", "w") as log:
             subprocess.call(cmd_c, stdout=log)
@@ -949,7 +948,7 @@ def scenario():
             compat[obj]["src"] = read_stat(src_report, report_dir)
             res.append("SC: "+format_num(100-float(compat[obj]["src"]["affected"]))+"%")
         
-        print ", ".join(res)
+        print(", ".join(res))
     
     if mapped_objs and not compat:
         exit_status("Error", "failed to create reports for objects")
@@ -1109,7 +1108,7 @@ def scenario():
     report += "<span class='result'>\n"
     if ARGS.bin:
         report += "Binary compatibility: <span class='"+get_bc_class(bc_eff, problems_t)+"' title='Avg. binary compatibility rate'>"+bc_eff+"%</span>\n"
-        if changed_soname.keys():
+        if changed_soname:
             report += " (<span class='incompatible' title='Effective binary compatibility is "+bc_eff+"%"+" due to changed SONAME'>changed SONAME</span>)"
         report += "<br/>\n"
     
@@ -1134,8 +1133,8 @@ def scenario():
         if kind=="devel" and not PUBLIC_ABI:
             continue
         
-        pkgs1 = PKGS["old"][kind].keys()
-        pkgs2 = PKGS["new"][kind].keys()
+        pkgs1 = list(PKGS["old"][kind])
+        pkgs2 = list(PKGS["new"][kind])
         
         pkgs1.sort(key=lambda x: x.lower())
         pkgs2.sort(key=lambda x: x.lower())
@@ -1293,7 +1292,7 @@ def scenario():
         os.makedirs(report_dir)
     
     write_file(report_dir+"/index.html", report)
-    print "The report has been generated to: "+report_dir+"/index.html"
+    print("The report has been generated to: "+report_dir+"/index.html")
     
     res = []
     
@@ -1303,12 +1302,12 @@ def scenario():
     if ARGS.src:
         res.append("Avg. SC: "+bc_src+"%")
     
-    print ", ".join(res)
+    print(", ".join(res))
     
     s_exit("Ok")
 
 try:
     scenario()
 except Exception as e:
-    print traceback.format_exc()
+    print(traceback.format_exc())
     s_exit("Error")
